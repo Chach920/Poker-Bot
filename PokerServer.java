@@ -9,7 +9,7 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.regex.*;
 
-public class PokerServer.java {
+public class PokerServer {
     static final int PORT = 8000;
     static final GameEngine game = new GameEngine();
 

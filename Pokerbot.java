@@ -51,7 +51,7 @@ class Card {
     }
 }
 
-public class PokerTime.java {
+public class PokerTime {
 
     private static final double SCALE_MAX = 100.0;
 

@@ -2,7 +2,7 @@ import java.net.URI;
 import java.net.http.*;
 import java.util.regex.*;
 
-public class ServerSmokeTest.java {
+public class ServerSmokeTest {
     static int failures = 0;
 
     public static void main(String[] args) throws Exception {

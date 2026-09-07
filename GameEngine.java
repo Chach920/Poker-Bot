@@ -1,6 +1,6 @@
 import java.util.*;
 
-class GameEngine.java {
+class GameEngine {
     static final int STARTING_CHIPS = 2000;
     static final int SMALL_BLIND = 10;
     static final int BIG_BLIND = 20;
