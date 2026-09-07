@@ -1,6 +1,6 @@
 import java.util.*;
 
-public class EngineTest {
+public class EngineTest.java {
     static int failures = 0;
 
     public static void main(String[] args) {
