@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Heads-up hold'em vs the bot</title>
+<style>
+  :root {
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #0b3d24;
+    color: #f2f2f0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 12px 60px;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 16px;
+  }
+  .table {
+    width: 100%;
+    max-width: 680px;
+    background: #0f5132;
+    border: 6px solid #3d2b1f;
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .player-box {
+    background: rgba(0,0,0,0.25);
+    border-radius: 12px;
+    padding: 10px 16px;
+    min-width: 150px;
+    text-align: center;
+  }
+  .player-box.active {
+    outline: 2px solid #f2c94c;
+  }
+  .player-name {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.7;
+    margin-bottom: 4px;
+  }
+  .player-chips {
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .player-contrib {
+    font-size: 12px;
+    opacity: 0.8;
+    margin-top: 2px;
+  }
+  .pot-box {
+    text-align: center;
+  }
+  .pot-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.7;
+  }
+  .pot-amount {
+    font-size: 26px;
+    font-weight: 700;
+    color: #f2c94c;
+  }
+  .street-label {
+    text-align: center;
+    font-size: 13px;
+    opacity: 0.75;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+  .cards-row {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    min-height: 96px;
+    align-items: center;
+    margin: 10px 0 18px;
+  }
+  .card {
+    width: 60px;
+    height: 84px;
+    background: #fdfdfd;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 6px;
+    font-weight: 700;
+    font-size: 18px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+  }
+  .card.red { color: #c0392b; }
+  .card.black { color: #1c1c1c; }
+  .card.back {
+    background: repeating-linear-gradient(45deg, #1a4a8a, #1a4a8a 6px, #123a6e 6px, #123a6e 12px);
+    border: 2px solid #0b2a52;
+  }
+  .card .suit {
+    align-self: flex-end;
+    font-size: 20px;
+  }
+  .hole-cards {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin: 8px 0;
+  }
+  .section-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.7;
+    text-align: center;
+    margin: 6px 0 4px;
+  }
+  .message {
+    text-align: center;
+    font-size: 15px;
+    min-height: 22px;
+    margin: 6px 0 14px;
+    color: #f2c94c;
+    font-weight: 600;
+  }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  button {
+    font-size: 15px;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    color: #fff;
+  }
+  button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .btn-fold { background: #a33; }
+  .btn-check { background: #2a6f4d; }
+  .btn-raise { background: #b58500; }
+  .btn-new { background: #2d5fa3; }
+  .raise-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,0,0,0.25);
+    padding: 8px 14px;
+    border-radius: 10px;
+  }
+  .raise-controls input[type="range"] {
+    width: 160px;
+  }
+  .raise-amount {
+    min-width: 46px;
+    text-align: center;
+    font-weight: 700;
+  }
+  .log-panel {
+    max-width: 680px;
+    width: 100%;
+    margin-top: 16px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 13px;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+  .log-panel div {
+    padding: 2px 0;
+    opacity: 0.85;
+  }
+</style>
+</head>
+<body>
+<h1>Heads-up hold'em vs the bot</h1>
+<div class="table">
+  <div class="row">
+    <div class="player-box" id="bot-box">
+      <div class="player-name">Bot</div>
+      <div class="player-chips" id="bot-chips">2000</div>
+      <div class="player-contrib" id="bot-contrib"></div>
+    </div>
+    <div class="pot-box">
+      <div class="pot-label">Pot</div>
+      <div class="pot-amount" id="pot-amount">0</div>
+    </div>
+    <div class="player-box" id="human-box">
+      <div class="player-name">You</div>
+      <div class="player-chips" id="human-chips">2000</div>
+      <div class="player-contrib" id="human-contrib"></div>
+    </div>
+  </div>
+
+  <div class="street-label" id="street-label">Preflop</div>
+
+  <div class="section-title">Bot</div>
+  <div class="hole-cards" id="bot-hole"></div>
+
+  <div class="section-title">Board</div>
+  <div class="cards-row" id="board-cards"></div>
+
+  <div class="section-title">You</div>
+  <div class="hole-cards" id="human-hole"></div>
+
+  <div class="message" id="message"></div>
+
+  <div class="controls" id="action-controls">
+    <button class="btn-fold" id="btn-fold">Fold</button>
+    <button class="btn-check" id="btn-check">Check</button>
+    <div class="raise-controls">
+      <button class="btn-raise" id="btn-raise">Raise to</button>
+      <input type="range" id="raise-slider" min="10" max="2000" step="10" value="20">
+      <span class="raise-amount" id="raise-amount">20</span>
+    </div>
+  </div>
+
+  <div class="controls" id="new-hand-controls" style="display:none">
+    <button class="btn-new" id="btn-new-hand">Deal next hand</button>
+    <button class="btn-new" id="btn-new-game">New game (reset chips)</button>
+  </div>
+</div>
+
+<div class="log-panel" id="log-panel"></div>
+
+<script>
+const suitInfo = {
+  C: { symbol: "♣", color: "black" },
+  D: { symbol: "♦", color: "red" },
+  H: { symbol: "♥", color: "red" },
+  S: { symbol: "♠", color: "black" }
+};
+
+function parseCard(code) {
+  const suit = code.slice(-1);
+  const rank = code.slice(0, -1);
+  return { rank, suit, symbol: suitInfo[suit].symbol, color: suitInfo[suit].color };
+}
+
+function renderCard(code) {
+  const c = parseCard(code);
+  const div = document.createElement("div");
+  div.className = "card " + c.color;
+  div.innerHTML = "<div>" + c.rank + "</div><div class='suit'>" + c.symbol + "</div>";
+  return div;
+}
+
+function renderCardBack() {
+  const div = document.createElement("div");
+  div.className = "card back";
+  return div;
+}
+
+function renderCardRow(container, codes, faceDown) {
+  container.innerHTML = "";
+  codes.forEach(code => container.appendChild(renderCard(code)));
+  if (faceDown) {
+    for (let i = 0; i < 2 - codes.length; i++) {
+      container.appendChild(renderCardBack());
+    }
+  }
+}
+
+function streetName(s) {
+  return { PREFLOP: "Preflop", FLOP: "Flop", TURN: "Turn", RIVER: "River",
+           SHOWDOWN: "Showdown", HAND_OVER: "Hand over" }[s] || s;
+}
+
+async function postAction(action, amount) {
+  const body = { action };
+  if (amount !== undefined) body.amount = amount;
+  const res = await fetch("/api/action", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    document.getElementById("message").textContent = data.error || "Invalid action";
+    return null;
+  }
+  return data;
+}
+
+async function fetchState() {
+  const res = await fetch("/api/state");
+  return res.json();
+}
+
+function render(state) {
+  document.getElementById("human-chips").textContent = state.humanChips;
+  document.getElementById("bot-chips").textContent = state.botChips;
+  document.getElementById("pot-amount").textContent = state.pot;
+  document.getElementById("human-contrib").textContent = state.humanContrib > 0 ? "bet " + state.humanContrib : "";
+  document.getElementById("bot-contrib").textContent = state.botContrib > 0 ? "bet " + state.botContrib : "";
+  document.getElementById("street-label").textContent = streetName(state.street);
+
+  document.getElementById("human-box").classList.toggle("active", state.toAct === "human" && state.handInProgress);
+  document.getElementById("bot-box").classList.toggle("active", state.toAct === "bot" && state.handInProgress);
+
+  renderCardRow(document.getElementById("human-hole"), state.humanHole, false);
+  renderCardRow(document.getElementById("board-cards"), state.board, false);
+
+  if (state.botHole.length > 0) {
+    renderCardRow(document.getElementById("bot-hole"), state.botHole, false);
+  } else {
+    const box = document.getElementById("bot-hole");
+    box.innerHTML = "";
+    box.appendChild(renderCardBack());
+    box.appendChild(renderCardBack());
+  }
+
+  const logPanel = document.getElementById("log-panel");
+  logPanel.innerHTML = "";
+  state.log.forEach(line => {
+    const div = document.createElement("div");
+    div.textContent = line;
+    logPanel.appendChild(div);
+  });
+  logPanel.scrollTop = logPanel.scrollHeight;
+
+  const messageEl = document.getElementById("message");
+  const actionControls = document.getElementById("action-controls");
+  const newHandControls = document.getElementById("new-hand-controls");
+
+  if (!state.handInProgress) {
+    actionControls.style.display = "none";
+    newHandControls.style.display = "flex";
+    document.getElementById("btn-new-hand").disabled = !state.canStartHand;
+    if (state.winner === "human") {
+      messageEl.textContent = "You win with " + state.winningHandDescription + "!";
+    } else if (state.winner === "bot") {
+      messageEl.textContent = "Bot wins with " + state.winningHandDescription + ".";
+    } else if (state.winner === "split") {
+      messageEl.textContent = "Split pot - both had " + state.winningHandDescription + ".";
+    } else if (state.winner === "draw" || !state.canStartHand) {
+      messageEl.textContent = "Game over - someone is out of chips.";
+    }
+    return;
+  }
+
+  newHandControls.style.display = "none";
+
+  if (state.toAct !== "human") {
+    actionControls.style.display = "none";
+    messageEl.textContent = "Bot is thinking...";
+    return;
+  }
+
+  actionControls.style.display = "flex";
+  const checkBtn = document.getElementById("btn-check");
+  checkBtn.textContent = state.callAmount > 0 ? ("Call " + state.callAmount) : "Check";
+  messageEl.textContent = "Your turn.";
+
+  const slider = document.getElementById("raise-slider");
+  slider.min = state.minRaiseTo;
+  slider.max = Math.max(state.maxRaiseTo, state.minRaiseTo);
+  slider.step = 10;
+  if (Number(slider.value) < state.minRaiseTo || Number(slider.value) > state.maxRaiseTo) {
+    slider.value = state.minRaiseTo;
+  }
+  document.getElementById("raise-amount").textContent = slider.value;
+  document.getElementById("btn-raise").disabled = state.maxRaiseTo < state.minRaiseTo;
+}
+
+async function refresh() {
+  const state = await fetchState();
+  render(state);
+}
+
+document.getElementById("raise-slider").addEventListener("input", e => {
+  document.getElementById("raise-amount").textContent = e.target.value;
+});
+
+document.getElementById("btn-fold").addEventListener("click", async () => {
+  const state = await postAction("fold");
+  if (state) render(state);
+});
+
+document.getElementById("btn-check").addEventListener("click", async () => {
+  const state = await postAction("check");
+  if (state) render(state);
+});
+
+document.getElementById("btn-raise").addEventListener("click", async () => {
+  const amount = Number(document.getElementById("raise-slider").value);
+  const state = await postAction("raise", amount);
+  if (state) render(state);
+});
+
+document.getElementById("btn-new-hand").addEventListener("click", async () => {
+  const state = await postAction("new-hand");
+  if (state) render(state);
+});
+
+document.getElementById("btn-new-game").addEventListener("click", async () => {
+  const state = await postAction("new-game");
+  if (state) render(state);
+});
+
+refresh();
+</script>
+</body>
+</html>
